@@ -1,0 +1,190 @@
+diff --git a/src/FullSystem/FullSystem.cpp b/src/FullSystem/FullSystem.cpp
+index 516f6cc..e52765b 100644
+--- a/src/FullSystem/FullSystem.cpp
++++ b/src/FullSystem/FullSystem.cpp
+@@ -643,7 +643,7 @@ void FullSystem::activatePointsMT()
+ 	std::vector<PointHessian*> optimized; optimized.resize(toOptimize.size());
+ 
+ 	if(multiThreading)
+-		treadReduce.reduce(boost::bind(&FullSystem::activatePointsMT_Reductor, this, &optimized, &toOptimize, _1, _2, _3, _4), 0, toOptimize.size(), 50);
++		treadReduce.reduce(boost::bind(&FullSystem::activatePointsMT_Reductor, this, &optimized, &toOptimize, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, toOptimize.size(), 50);
+ 
+ 	else
+ 		activatePointsMT_Reductor(&optimized, &toOptimize, 0, toOptimize.size(), 0, 0);
+diff --git a/src/FullSystem/FullSystemOptimize.cpp b/src/FullSystem/FullSystemOptimize.cpp
+index 74af9c1..357312d 100644
+--- a/src/FullSystem/FullSystemOptimize.cpp
++++ b/src/FullSystem/FullSystemOptimize.cpp
+@@ -151,7 +151,7 @@ Vec3 FullSystem::linearizeAll(bool fixLinearization)
+ 
+ 	if(multiThreading)
+ 	{
+-		treadReduce.reduce(boost::bind(&FullSystem::linearizeAll_Reductor, this, fixLinearization, toRemove, _1, _2, _3, _4), 0, activeResiduals.size(), 0);
++		treadReduce.reduce(boost::bind(&FullSystem::linearizeAll_Reductor, this, fixLinearization, toRemove, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, activeResiduals.size(), 0);
+ 		lastEnergyP = treadReduce.stats[0];
+ 	}
+ 	else
+@@ -451,7 +451,7 @@ float FullSystem::optimize(int mnumOptIts)
+ 
+ 
+ 	if(multiThreading)
+-		treadReduce.reduce(boost::bind(&FullSystem::applyRes_Reductor, this, true, _1, _2, _3, _4), 0, activeResiduals.size(), 50);
++		treadReduce.reduce(boost::bind(&FullSystem::applyRes_Reductor, this, true, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, activeResiduals.size(), 50);
+ 	else
+ 		applyRes_Reductor(true,0,activeResiduals.size(),0,0);
+ 
+@@ -522,7 +522,7 @@ float FullSystem::optimize(int mnumOptIts)
+ 		{
+ 
+ 			if(multiThreading)
+-				treadReduce.reduce(boost::bind(&FullSystem::applyRes_Reductor, this, true, _1, _2, _3, _4), 0, activeResiduals.size(), 50);
++				treadReduce.reduce(boost::bind(&FullSystem::applyRes_Reductor, this, true, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, activeResiduals.size(), 50);
+ 			else
+ 				applyRes_Reductor(true,0,activeResiduals.size(),0,0);
+ 
+diff --git a/src/IOWrapper/OpenCV/ImageRW_OpenCV.cpp b/src/IOWrapper/OpenCV/ImageRW_OpenCV.cpp
+index 170cb33..685eb72 100644
+--- a/src/IOWrapper/OpenCV/ImageRW_OpenCV.cpp
++++ b/src/IOWrapper/OpenCV/ImageRW_OpenCV.cpp
+@@ -34,7 +34,7 @@ namespace IOWrap
+ {
+ MinimalImageB* readImageBW_8U(std::string filename)
+ {
+-	cv::Mat m = cv::imread(filename, CV_LOAD_IMAGE_GRAYSCALE);
++	cv::Mat m = cv::imread(filename, cv::IMREAD_GRAYSCALE);
+ 	if(m.rows*m.cols==0)
+ 	{
+ 		printf("cv::imread could not read image %s! this may segfault. \n", filename.c_str());
+@@ -52,7 +52,7 @@ MinimalImageB* readImageBW_8U(std::string filename)
+ 
+ MinimalImageB3* readImageRGB_8U(std::string filename)
+ {
+-	cv::Mat m = cv::imread(filename, CV_LOAD_IMAGE_COLOR);
++	cv::Mat m = cv::imread(filename, cv::IMREAD_COLOR);
+ 	if(m.rows*m.cols==0)
+ 	{
+ 		printf("cv::imread could not read image %s! this may segfault. \n", filename.c_str());
+@@ -70,7 +70,7 @@ MinimalImageB3* readImageRGB_8U(std::string filename)
+ 
+ MinimalImage<unsigned short>* readImageBW_16U(std::string filename)
+ {
+-	cv::Mat m = cv::imread(filename, CV_LOAD_IMAGE_UNCHANGED);
++	cv::Mat m = cv::imread(filename, cv::IMREAD_UNCHANGED);
+ 	if(m.rows*m.cols==0)
+ 	{
+ 		printf("cv::imread could not read image %s! this may segfault. \n", filename.c_str());
+@@ -88,7 +88,7 @@ MinimalImage<unsigned short>* readImageBW_16U(std::string filename)
+ 
+ MinimalImageB* readStreamBW_8U(char* data, int numBytes)
+ {
+-	cv::Mat m = cv::imdecode(cv::Mat(numBytes,1,CV_8U, data), CV_LOAD_IMAGE_GRAYSCALE);
++	cv::Mat m = cv::imdecode(cv::Mat(numBytes,1,CV_8U, data), cv::IMREAD_GRAYSCALE);
+ 	if(m.rows*m.cols==0)
+ 	{
+ 		printf("cv::imdecode could not read stream (%d bytes)! this may segfault. \n", numBytes);
+diff --git a/src/OptimizationBackend/AccumulatedSCHessian.h b/src/OptimizationBackend/AccumulatedSCHessian.h
+index 703ed3b..3603fba 100644
+--- a/src/OptimizationBackend/AccumulatedSCHessian.h
++++ b/src/OptimizationBackend/AccumulatedSCHessian.h
+@@ -105,7 +105,7 @@ public:
+ 			}
+ 
+ 			red->reduce(boost::bind(&AccumulatedSCHessianSSE::stitchDoubleInternal,
+-				this,Hs, bs, EF,  _1, _2, _3, _4), 0, nframes[0]*nframes[0], 0);
++				this,Hs, bs, EF,  boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, nframes[0]*nframes[0], 0);
+ 
+ 			// sum up results
+ 			H = Hs[0];
+diff --git a/src/OptimizationBackend/AccumulatedTopHessian.h b/src/OptimizationBackend/AccumulatedTopHessian.h
+index 17e78ac..95f6c95 100644
+--- a/src/OptimizationBackend/AccumulatedTopHessian.h
++++ b/src/OptimizationBackend/AccumulatedTopHessian.h
+@@ -103,7 +103,7 @@ public:
+ 			}
+ 
+ 			red->reduce(boost::bind(&AccumulatedTopHessianSSE::stitchDoubleInternal,
+-				this,Hs, bs, EF, usePrior,  _1, _2, _3, _4), 0, nframes[0]*nframes[0], 0);
++				this,Hs, bs, EF, usePrior,  boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, nframes[0]*nframes[0], 0);
+ 
+ 			// sum up results
+ 			H = Hs[0];
+diff --git a/src/OptimizationBackend/EnergyFunctional.cpp b/src/OptimizationBackend/EnergyFunctional.cpp
+index ad2c375..0fda901 100644
+--- a/src/OptimizationBackend/EnergyFunctional.cpp
++++ b/src/OptimizationBackend/EnergyFunctional.cpp
+@@ -198,9 +198,9 @@ void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
+ {
+ 	if(MT)
+ 	{
+-		red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_A, nFrames,  _1, _2, _3, _4), 0, 0, 0);
++		red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_A, nFrames,  boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, 0, 0);
+ 		red->reduce(boost::bind(&AccumulatedTopHessianSSE::addPointsInternal<0>,
+-				accSSE_top_A, &allPoints, this,  _1, _2, _3, _4), 0, allPoints.size(), 50);
++				accSSE_top_A, &allPoints, this,  boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, allPoints.size(), 50);
+ 		accSSE_top_A->stitchDoubleMT(red,H,b,this,false,true);
+ 		resInA = accSSE_top_A->nres[0];
+ 	}
+@@ -220,9 +220,9 @@ void EnergyFunctional::accumulateLF_MT(MatXX &H, VecX &b, bool MT)
+ {
+ 	if(MT)
+ 	{
+-		red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_L, nFrames,  _1, _2, _3, _4), 0, 0, 0);
++		red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_L, nFrames,  boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, 0, 0);
+ 		red->reduce(boost::bind(&AccumulatedTopHessianSSE::addPointsInternal<1>,
+-				accSSE_top_L, &allPoints, this,  _1, _2, _3, _4), 0, allPoints.size(), 50);
++				accSSE_top_L, &allPoints, this,  boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, allPoints.size(), 50);
+ 		accSSE_top_L->stitchDoubleMT(red,H,b,this,true,true);
+ 		resInL = accSSE_top_L->nres[0];
+ 	}
+@@ -245,9 +245,9 @@ void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
+ {
+ 	if(MT)
+ 	{
+-		red->reduce(boost::bind(&AccumulatedSCHessianSSE::setZero, accSSE_bot, nFrames,  _1, _2, _3, _4), 0, 0, 0);
++		red->reduce(boost::bind(&AccumulatedSCHessianSSE::setZero, accSSE_bot, nFrames,  boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, 0, 0);
+ 		red->reduce(boost::bind(&AccumulatedSCHessianSSE::addPointsInternal,
+-				accSSE_bot, &allPoints, true,  _1, _2, _3, _4), 0, allPoints.size(), 50);
++				accSSE_bot, &allPoints, true,  boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, allPoints.size(), 50);
+ 		accSSE_bot->stitchDoubleMT(red,H,b,this,true);
+ 	}
+ 	else
+@@ -281,7 +281,7 @@ void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
+ 
+ 	if(MT)
+ 		red->reduce(boost::bind(&EnergyFunctional::resubstituteFPt,
+-						this, cstep, xAd,  _1, _2, _3, _4), 0, allPoints.size(), 50);
++						this, cstep, xAd,  boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, allPoints.size(), 50);
+ 	else
+ 		resubstituteFPt(cstep, xAd, 0, allPoints.size(), 0,0);
+ 
+@@ -407,7 +407,7 @@ double EnergyFunctional::calcLEnergyF_MT()
+ 	E += cDeltaF.cwiseProduct(cPriorF).dot(cDeltaF);
+ 
+ 	red->reduce(boost::bind(&EnergyFunctional::calcLEnergyPt,
+-			this, _1, _2, _3, _4), 0, allPoints.size(), 50);
++			this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4), 0, allPoints.size(), 50);
+ 
+ 	return E+red->stats[0];
+ }
+diff --git a/src/util/IndexThreadReduce.h b/src/util/IndexThreadReduce.h
+index 683a8d7..08b3601 100644
+--- a/src/util/IndexThreadReduce.h
++++ b/src/util/IndexThreadReduce.h
+@@ -46,7 +46,7 @@ public:
+ 		nextIndex = 0;
+ 		maxIndex = 0;
+ 		stepSize = 1;
+-		callPerIndex = boost::bind(&IndexThreadReduce::callPerIndexDefault, this, _1, _2, _3, _4);
++		callPerIndex = boost::bind(&IndexThreadReduce::callPerIndexDefault, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4);
+ 
+ 		running = true;
+ 		for(int i=0;i<NUM_THREADS;i++)
+@@ -131,7 +131,7 @@ public:
+ 
+ 		nextIndex = 0;
+ 		maxIndex = 0;
+-		this->callPerIndex = boost::bind(&IndexThreadReduce::callPerIndexDefault, this, _1, _2, _3, _4);
++		this->callPerIndex = boost::bind(&IndexThreadReduce::callPerIndexDefault, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3, boost::placeholders::_4);
+ 
+ 		//printf("reduce done (all threads finished)\n");
+ 	}
